@@ -1,0 +1,14 @@
+
+Name: H100-template1
+GPU: NVIDIA H100 SXM
+Container Image: cppalliance/vllm-openai:v0.20.0-cu130
+Container start command: Qwen/Qwen2.5-72B-Instruct --enable-auto-tool-choice --tool-call-parser hermes --gpu-memory-utilization 0.90 --enable-log-requests --uvicorn-log-level info
+Container disk: 200GB
+Volume disk: 80GB
+Environment Variables:
+HF_HOME=/workspace/.cache/huggingface
+HUGGINGFACE_HUB_CACHE=/workspace/.cache/huggingface/hub
+TRANSFORMERS_CACHE=/workspace/.cache/huggingface/transformers
+TORCH_HOME=/workspace/.cache/torch
+API_KEY=___
+

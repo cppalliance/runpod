@@ -1,0 +1,43 @@
+worker_processes 1;
+error_log /dev/stderr warn;
+pid /tmp/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    # Write temp files somewhere writable (not /var)
+    client_body_temp_path /tmp/nginx_client_body;
+    proxy_temp_path       /tmp/nginx_proxy;
+    fastcgi_temp_path     /tmp/nginx_fastcgi;
+    uwsgi_temp_path       /tmp/nginx_uwsgi;
+    scgi_temp_path        /tmp/nginx_scgi;
+
+    access_log /dev/stdout;
+
+    server {
+        listen 8000;
+
+        location / {
+            # ---- Auth check ----
+            set $expected "Bearer ${API_KEY}";
+
+            if ($http_authorization != $expected) {
+                return 401 '{"error":"Unauthorized"}\n';
+            }
+
+            # ---- Forward to vLLM on internal port ----
+            proxy_pass         http://127.0.0.1:8001;
+            proxy_set_header   Host              $host;
+            proxy_set_header   X-Real-IP         $remote_addr;
+            proxy_set_header   Authorization     $http_authorization;
+
+            # vLLM streaming needs these
+            proxy_buffering         off;
+            proxy_read_timeout      600s;
+            proxy_send_timeout      600s;
+            chunked_transfer_encoding on;
+        }
+    }
+}
