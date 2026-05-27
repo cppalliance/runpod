@@ -6,9 +6,9 @@ Container start command: Qwen/Qwen2.5-72B-Instruct --enable-auto-tool-choice --t
 Container disk: 200GB
 Volume disk: 80GB
 Environment Variables:
-HF_HOME=/workspace/.cache/huggingface
-HUGGINGFACE_HUB_CACHE=/workspace/.cache/huggingface/hub
-TRANSFORMERS_CACHE=/workspace/.cache/huggingface/transformers
-TORCH_HOME=/workspace/.cache/torch
-API_KEY=___
+HF_HOME=/workspace/hf
+HUGGINGFACE_HUB_CACHE=/workspace/hf/hub
+TRANSFORMERS_CACHE=/workspace/hf/transformers
+TORCH_HOME=/workspace/hf/torch
+API_KEY=__
 
