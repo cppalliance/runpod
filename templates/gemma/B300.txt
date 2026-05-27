@@ -1,0 +1,14 @@
+
+Name: B300-x4-gemma
+GPU: NVIDIA B300 (x4)
+Container Image: cppalliance/vllm-openai:v0.20.0-cu130
+Container start command: google/gemma-4-31B-it --max-model-len 131072 --gpu-memory-utilization 0.9 --enable-prefix-caching --reasoning-parser gemma4 --tool-call-parser gemma4 --enable-auto-tool-choice --chat-template examples/tool_chat_template_gemma4.jinja --default-chat-template-kwargs '{"enable_thinking": true}' --enable-log-requests --uvicorn-log-level info
+Container disk: 200GB
+Volume disk: 2000GB
+Environment Variables:
+HF_HOME=/workspace/hf
+HUGGINGFACE_HUB_CACHE=/workspace/hf/hub
+TRANSFORMERS_CACHE=/workspace/hf/transformers
+TORCH_HOME=/workspace/hf/torch
+API_KEY=__
+
