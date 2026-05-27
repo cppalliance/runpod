@@ -1,6 +1,6 @@
 
-Name: H100-template1
-GPU: NVIDIA H100 SXM
+Name: B200-template1
+GPU: NVIDIA B200
 Container Image: cppalliance/vllm-openai:v0.20.0-cu130
 Container start command: Qwen/Qwen2.5-72B-Instruct --enable-auto-tool-choice --tool-call-parser hermes --gpu-memory-utilization 0.90 --enable-log-requests --uvicorn-log-level info
 Container disk: 200GB
