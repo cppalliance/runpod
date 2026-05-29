@@ -7,7 +7,12 @@
 # Required RunPod env var:
 #   API_KEY   – the bearer token callers must supply
 #
-# Optional RunPod env var:
+# Optional RunPod env vars:
+#   API_KEY2  – additional accepted bearer token (any of API_KEY/API_KEY2/API_KEY3 works)
+#   API_KEY3  – additional accepted bearer token
+#               Unset/empty optional keys are replaced with an unguessable
+#               random sentinel, so a missing or empty Authorization header
+#               can never authenticate.
 #   VLLM_ARGS – full vLLM CLI flags (overrides the default Qwen2.5-72B launch)
 #               e.g. "--model Qwen/Qwen2.5-7B-Instruct --gpu-memory-utilization 0.95"
 # ─────────────────────────────────────────────────────────────────────────────

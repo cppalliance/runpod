@@ -21,9 +21,20 @@ http {
 
         location / {
             # ---- Auth check ----
-            set $expected "Bearer ${API_KEY}";
+            # Accept any of up to three Bearer tokens. API_KEY is required;
+            # API_KEY2 / API_KEY3 are optional and, when unset, are replaced
+            # by the entrypoint with an unguessable sentinel so they cannot
+            # be satisfied by an empty or missing Authorization header.
+            set $expected1 "Bearer ${API_KEY}";
+            set $expected2 "Bearer ${API_KEY2}";
+            set $expected3 "Bearer ${API_KEY3}";
 
-            if ($http_authorization != $expected) {
+            set $auth_ok 0;
+            if ($http_authorization = $expected1) { set $auth_ok 1; }
+            if ($http_authorization = $expected2) { set $auth_ok 1; }
+            if ($http_authorization = $expected3) { set $auth_ok 1; }
+
+            if ($auth_ok = 0) {
                 return 401 '{"error":"Unauthorized"}\n';
             }
 
