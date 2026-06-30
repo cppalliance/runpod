@@ -16,6 +16,11 @@
 #   VLLM_ARGS – full vLLM CLI flags (overrides the default Qwen2.5-72B launch)
 #               e.g. "--model Qwen/Qwen2.5-7B-Instruct --gpu-memory-utilization 0.95"
 # ─────────────────────────────────────────────────────────────────────────────
+# Stage 1: pull dcgm-exporter from NVIDIA's published image
+# FROM nvcr.io/nvidia/k8s/dcgm-exporter:4.5.3-4.8.2 AS dcgm
+FROM nvidia/dcgm-exporter:4.5.2-4.8.1-ubuntu22.04 AS dcgm
+
+# Stage 2: your existing vLLM image
 FROM vllm/vllm-openai:v0.20.0-cu130
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -29,19 +34,9 @@ RUN apt-get update && \
         nginx gettext-base wget ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Download dcgm-exporter (static-ish Go binary) and install it
-RUN set -eux; \
-    arch="$(uname -m)"; \
-    case "$arch" in \
-      x86_64)  dcgm_arch="amd64" ;; \
-      aarch64) dcgm_arch="arm64" ;; \
-      *) echo "Unsupported arch: $arch" >&2; exit 1 ;; \
-    esac; \
-    wget -O /tmp/dcgm-exporter.tar.gz \
-      "https://github.com/NVIDIA/dcgm-exporter/releases/download/v${DCGM_EXPORTER_VERSION}/dcgm-exporter_${DCGM_EXPORTER_VERSION}_linux_${dcgm_arch}.tar.gz"; \
-    tar -C /usr/local/bin -xzf /tmp/dcgm-exporter.tar.gz dcgm-exporter; \
-    rm -f /tmp/dcgm-exporter.tar.gz; \
-    chmod +x /usr/local/bin/dcgm-exporter
+# Copy the dcgm-exporter binary from the NVIDIA image
+COPY --from=dcgm /usr/bin/dcgm-exporter /usr/local/bin/dcgm-exporter
+RUN chmod +x /usr/local/bin/dcgm-exporter
 
 # Drop the nginx template in place
 COPY nginx.conf.template /etc/nginx/nginx.conf.template
