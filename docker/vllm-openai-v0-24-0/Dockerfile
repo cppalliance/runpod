@@ -22,7 +22,7 @@
 FROM nvcr.io/nvidia/k8s/dcgm-exporter:4.5.2-4.8.1-ubuntu22.04 AS dcgm
 
 # Stage 2: your existing vLLM image
-FROM vllm/vllm-openai:v0.20.0-cu130
+FROM docker.io/vllm/vllm-openai:v0.24.0
 
 ARG DEBIAN_FRONTEND=noninteractive
 
