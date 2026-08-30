@@ -1,0 +1,16 @@
+Name: B300-x8-kimi-k3
+GPU: NVIDIA B300
+Container Image: vllm/vllm-openai:kimi-k3
+Container start command: moonshotai/Kimi-K3 --tensor-parallel-size 8 --trust-remote-code --load-format fastsafetensors --moe-backend auto --gpu-memory-utilization 0.95 --max-model-len 1048576 --max-num-seqs 16 --kv-cache-dtype fp8 --no-enable-flashinfer-autotune --attention-config '{"use_prefill_query_quantization":true,"mla_prefill_backend":"flashinfer"}' --enable-prefix-caching --prefix-match-unit 128 --reasoning-parser kimi_k3 --enable-auto-tool-choice --tool-call-parser kimi_k3 --served-model-name kimi-k3 --enable-log-requests --uvicorn-log-level info
+Container disk: 200GB
+Volume disk: 2500GB
+Environment Variables:
+HF_HOME=/workspace/hf
+HUGGINGFACE_HUB_CACHE=/workspace/hf/hub
+TRANSFORMERS_CACHE=/workspace/hf/transformers
+TORCH_HOME=/workspace/hf/torch
+VLLM_ALLREDUCE_USE_FLASHINFER=1
+VLLM_ENGINE_READY_TIMEOUT_S=3600
+VLLM_USE_V2_MODEL_RUNNER=1
+VLLM_USE_RUST_FRONTEND=1
+API_KEY=__
