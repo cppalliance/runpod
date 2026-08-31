@@ -1,0 +1,9 @@
+{
+  "podUrl": "https://YOUR-POD-8000.proxy.runpod.net",
+  "podApiKey": "YOUR_POD_API_KEY",
+  "podModels": ["deepseek-v4-pro"],
+  "anthropicUrl": "https://api.anthropic.com",
+  "host": "127.0.0.1",
+  "port": 8787,
+  "timeoutMs": 660000
+}
