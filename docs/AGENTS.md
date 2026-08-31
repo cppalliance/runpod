@@ -111,3 +111,4 @@ export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-pro
 claude --model deepseek-v4-pro --disallowedTools "WebSearch"
 ```
 
+See [ARCHITECTING-AND-SUBAGENTS.md](ARCHITECTING-AND-SUBAGENTS.md) for more advanced options.   
