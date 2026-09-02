@@ -1,0 +1,75 @@
+worker_processes 1;
+error_log /dev/stderr warn;
+pid /tmp/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    # Write temp files somewhere writable (not /var)
+    client_body_temp_path /tmp/nginx_client_body;
+    proxy_temp_path       /tmp/nginx_proxy;
+    fastcgi_temp_path     /tmp/nginx_fastcgi;
+    uwsgi_temp_path       /tmp/nginx_uwsgi;
+    scgi_temp_path        /tmp/nginx_scgi;
+
+    access_log /dev/stdout;
+
+    server {
+        listen 8000;
+
+        location = /gpu-metrics {
+            # ---- Auth check ----
+            set $expected1 "Bearer ${API_KEY}";
+            set $expected2 "Bearer ${API_KEY2}";
+            set $expected3 "Bearer ${API_KEY3}";
+        
+            set $auth_ok 0;
+            if ($http_authorization = $expected1) { set $auth_ok 1; }
+            if ($http_authorization = $expected2) { set $auth_ok 1; }
+            if ($http_authorization = $expected3) { set $auth_ok 1; }
+        
+            if ($auth_ok = 0) {
+                return 401 '{"error":"Unauthorized"}\n';
+            }
+        
+            proxy_pass http://127.0.0.1:9400/metrics;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_read_timeout 30s;
+        }
+
+        location / {
+            # ---- Auth check ----
+            # Accept any of up to three Bearer tokens. API_KEY is required;
+            # API_KEY2 / API_KEY3 are optional and, when unset, are replaced
+            # by the entrypoint with an unguessable sentinel so they cannot
+            # be satisfied by an empty or missing Authorization header.
+            set $expected1 "Bearer ${API_KEY}";
+            set $expected2 "Bearer ${API_KEY2}";
+            set $expected3 "Bearer ${API_KEY3}";
+
+            set $auth_ok 0;
+            if ($http_authorization = $expected1) { set $auth_ok 1; }
+            if ($http_authorization = $expected2) { set $auth_ok 1; }
+            if ($http_authorization = $expected3) { set $auth_ok 1; }
+
+            if ($auth_ok = 0) {
+                return 401 '{"error":"Unauthorized"}\n';
+            }
+
+            # ---- Forward to vLLM on internal port ----
+            proxy_pass         http://127.0.0.1:8001;
+            proxy_set_header   Host              $host;
+            proxy_set_header   X-Real-IP         $remote_addr;
+            proxy_set_header   Authorization     $http_authorization;
+
+            # vLLM streaming needs these
+            proxy_buffering         off;
+            proxy_read_timeout      600s;
+            proxy_send_timeout      600s;
+            chunked_transfer_encoding on;
+        }
+    }
+}
