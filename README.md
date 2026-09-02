@@ -39,6 +39,13 @@ The [docker/](./docker/) directory contains Dockerfiles and scripts to build and
 
 Often, it's not necessary to build a docker image or create a template, if the step was already done.
 
+## Speech-to-Text
+
+For the faster-whisper transcription endpoints, see
+[templates/whisper/](./templates/whisper/). STT does not run on vLLM and does
+not need a custom Dockerfile — the upstream `speaches` image has native
+`API_KEY` auth, so it is used directly.
+
 ## Debugging
 
 - Optionally expose ports 8000,8001 in runpod. By adding port 8001 the llvm process can be reached directly, bypassing the nginx proxy. 

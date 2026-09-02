@@ -1,0 +1,15 @@
+Name: T4-faster-whisper-stt
+GPU: NVIDIA T4
+Container Image: ghcr.io/speaches-ai/speaches:latest-cuda-12.6.3
+Container start command:
+Container disk: 40GB
+Volume disk: 50GB
+Environment Variables:
+HF_HOME=/workspace/hf
+HUGGINGFACE_HUB_CACHE=/workspace/hf/hub
+API_KEY=__
+PRELOAD_MODELS=["Systran/faster-whisper-large-v3"]
+WHISPER__COMPUTE_TYPE=int8
+STT_MODEL_TTL=-1
+LOG_LEVEL=info
+ENABLE_UI=false
