@@ -21,8 +21,8 @@ Uncheck all other models (optional. if bugs appear).
 Add a model "deepseek-v4-pro".  
 
 Cursor->Settings->Models->API Key  
-Key: enable key.  $API_KEY  
-URL: enable url. $POD_URL ( ending with /v1. Add /v1 to the URL. )  
+OpenAI API Key: enable key.  $API_KEY  
+Override OpenAI Base URL: enable url. $POD_URL ( ending with /v1. Add /v1 to the URL. )  
 
 ### Cursor cli agent
 
