@@ -12,7 +12,9 @@ BRAVE_API_KEY= (for web search via MCP, see "Web search" below)
 
 Instructions:
 
-Install Cursor
+Install Cursor, or    
+Upgrade Cursor to the latest version and restart.  
+Don't use an out-of-date version.    
 
 Configure Settings
 
