@@ -2,7 +2,7 @@
 Name: H200-x8-glm-5.3
 GPU: NVIDIA H200 SXM
 Container Image: cppalliance/vllm-openai:v0.28.0
-Container start command: zai-org/GLM-5.3 --tensor-parallel-size 8 --max-model-len 393216 --max-num-seqs 32 --gpu-memory-utilization 0.95 --served-model-name glm-5.3 gpt-4o --kv-cache-dtype fp8 --speculative-config '{"method":"mtp","num_speculative_tokens":5}' --reasoning-parser glm45 --enable-auto-tool-choice --tool-call-parser glm47 --enable-log-requests --uvicorn-log-level info
+Container start command: zai-org/GLM-5.3 --tensor-parallel-size 8 --max-model-len 393216 --max-num-seqs 32 --gpu-memory-utilization 0.95 --served-model-name glm-5.3 gpt-4o gpt-4o-mini default --kv-cache-dtype fp8 --speculative-config '{"method":"mtp","num_speculative_tokens":5}' --reasoning-parser glm45 --enable-auto-tool-choice --tool-call-parser glm47 --enable-log-requests --uvicorn-log-level info
 Container disk: 200GB
 Volume disk: 2000GB
 Environment Variables:

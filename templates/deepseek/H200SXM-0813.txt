@@ -2,7 +2,7 @@
 Name: H200-x8-deepseek-0813
 GPU: NVIDIA H200 SXM
 Container Image: cppalliance/vllm-openai:v0.28.0
-Container start command: deepseek-ai/DeepSeek-V4-Pro-0813 --tensor-parallel-size 8 --enable-expert-parallel --enable-ep-weight-filter --max-model-len 393216 --max-num-seqs 16 --gpu-memory-utilization 0.95 --trust-remote-code --served-model-name deepseek-v4-pro gpt-4o --kv-cache-dtype fp8 --speculative-config '{"method":"dspark","num_speculative_tokens":7,"draft_sample_method":"greedy"}' --reasoning-parser deepseek_v4 --reasoning-config '{"reasoning_start_str":"<think>","reasoning_end_str":"</think>"}' --enable-auto-tool-choice --tool-call-parser deepseek_v4 --enable-log-requests --uvicorn-log-level info
+Container start command: deepseek-ai/DeepSeek-V4-Pro-0813 --tensor-parallel-size 8 --enable-expert-parallel --enable-ep-weight-filter --max-model-len 393216 --max-num-seqs 16 --gpu-memory-utilization 0.95 --trust-remote-code --served-model-name deepseek-v4-pro gpt-4o gpt-4o-mini default --kv-cache-dtype fp8 --speculative-config '{"method":"dspark","num_speculative_tokens":7,"draft_sample_method":"greedy"}' --reasoning-parser deepseek_v4 --reasoning-config '{"reasoning_start_str":"<think>","reasoning_end_str":"</think>"}' --enable-auto-tool-choice --tool-call-parser deepseek_v4 --enable-log-requests --uvicorn-log-level info
 Container disk: 200GB
 Volume disk: 2000GB
 Environment Variables:
