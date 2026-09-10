@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -xe
-image=cppalliance/vllm-openai:v0.28.0
+image=cppalliance/vllm-openai:v0.28.0v2
 echo image is $image
 docker buildx build -t $image .
 
