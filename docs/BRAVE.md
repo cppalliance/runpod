@@ -1,8 +1,13 @@
 # Brave search
 
-Brave Search is shared company-wide through the runpod pod. A single Brave
+A Brave search api is shared company-wide through the runpod.io pod. A single Brave
 subscription key lives on the pod; you never need your own. Everything you need
 is the pod URL plus your personal `API_KEY` (ask an admin for one).
+
+The motivations for this design are:  
+- Mainly, Brave's own restrictions and limitations: "You may have up to 10 keys per plan." That is not enough to assign everyone their own key.    
+- Key rotation, management, and security.   
+- Ease of use. No extra keys to provision or revoke.  
 
 ## Brave API usage
 
@@ -114,7 +119,4 @@ Again, two details matter: the developer's token never leaves the pod, and the
 overwritten with the pod's real `BRAVE_API_KEY` before the request goes
 upstream.
 
-The trade-off worth knowing: because everyone shares one Brave key, the pod has
-no per-person usage accounting unless we add it. That's the price of not
-keeping ten separate Brave keys — and why the proxy is the better model for a
-team.
+If you discover Brave API use cases which haven't been covered, let us know. More nginx proxies may be added.   
