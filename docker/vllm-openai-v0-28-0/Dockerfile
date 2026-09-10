@@ -16,7 +16,9 @@
 #   BRAVE_API_KEY – the shared Brave Search API key. When set, a centralized
 #               brave-search-mcp-server is started on 127.0.0.1:8080 and
 #               exposed to developers at https://<pod>/brave/mcp, protected
-#               by any of the API_KEY* bearer tokens above.
+#               by any of the API_KEY* bearer tokens above. The same key
+#               also backs the /brave/api/ REST proxy (X-Subscription-Token
+#               injection) used by local copies of wg21-paperflow.
 #   VLLM_ARGS – full vLLM CLI flags (overrides the default Qwen2.5-72B launch)
 #               e.g. "--model Qwen/Qwen2.5-7B-Instruct --gpu-memory-utilization 0.95"
 # ─────────────────────────────────────────────────────────────────────────────

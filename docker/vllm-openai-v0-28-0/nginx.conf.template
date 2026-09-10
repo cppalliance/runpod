@@ -32,6 +32,24 @@ http {
             proxy_read_timeout 30s;
         }
 
+        # ---- Brave Search REST API (for local website dev) ----
+        # The wg21-paperflow site talks to Brave's REST API directly:
+        #   GET https://api.search.brave.com/res/v1/web/search?q=...&count=...
+        # with header "X-Subscription-Token: <key>". Developers point their
+        # local copy at <pod>/brave/api instead; nginx accepts their *dev*
+        # token here, discards it, and injects the real BRAVE_API_KEY on the
+        # way upstream. The path /brave/api/web/search rewrites to
+        # https://api.search.brave.com/res/v1/web/search via the proxy_pass.
+        location /brave/api/ {
+            include /tmp/nginx_auth.conf;
+
+            proxy_pass            https://api.search.brave.com/res/v1/;
+            proxy_ssl_server_name on;
+            proxy_set_header      Authorization         "";   # drop dev auth
+            proxy_set_header      X-Subscription-Token  "${BRAVE_API_KEY}";
+            proxy_read_timeout    30s;
+        }
+
         # ---- Brave Search MCP ----
         # One shared Brave key lives in this pod; developers authenticate to
         # nginx with their personal API_KEY (via /tmp/nginx_auth.conf), and

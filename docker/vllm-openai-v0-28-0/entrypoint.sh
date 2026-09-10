@@ -5,7 +5,7 @@ set -euo pipefail
 # slots are API_KEY2 .. API_KEY${NUM_KEYS}. Issuing one key per person means a
 # key can be revoked independently when someone leaves, without rotating
 # everyone else's key.
-NUM_KEYS=20
+NUM_KEYS=25
 
 # API_KEY is required; the rest are optional.
 if [ -z "${API_KEY:-}" ]; then
@@ -62,9 +62,16 @@ EOF
 mkdir -p /tmp/nginx_client_body /tmp/nginx_proxy /tmp/nginx_fastcgi \
          /tmp/nginx_uwsgi /tmp/nginx_scgi
 
-# The template has no ${...} placeholders anymore (the keys live in the
-# generated auth snippet), so a plain copy is enough.
-cp /etc/nginx/nginx.conf.template /tmp/nginx.conf
+# The template has one ${...} placeholder now: the shared Brave API key
+# injected by the /brave/api/ location. Substitute ONLY that ($host, $auth_ok,
+# etc. are nginx variables and must pass through untouched). Keep the same
+# behavior as the API_KEY slots: never fail the pod if BRAVE_API_KEY is unset.
+if [ -z "${BRAVE_API_KEY:-}" ]; then
+    BRAVE_API_KEY=""
+fi
+export BRAVE_API_KEY
+envsubst '${BRAVE_API_KEY}' \
+    < /etc/nginx/nginx.conf.template > /tmp/nginx.conf
 
 # Start nginx
 nginx -c /tmp/nginx.conf
