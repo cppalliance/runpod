@@ -52,6 +52,26 @@ BRAVE_API_KEY, free tier is 2,000 searches/month).
 Then register the Brave Search MCP server once, for all projects
 (requires Node.js 18+ for npx):
 
+New method:
+
+An install of brave runs on the pod. Access it remotely.  
+
+```
+# (optional) if an earlier brave-search existed, remove it:  
+
+claude mcp remove brave-search --scope user
+
+# then add the mcp server:  
+
+export API_KEY=__
+export POD_URL=__
+claude mcp add brave-search ${POD_URL}/brave/mcp --transport http --scope user --header "Authorization: Bearer $API_KEY"
+```
+
+Deprecated method:
+
+In this scenario, the brave web seach runs locally. It requires an API key, and those are limited. Prefer the above method.  
+
 ```
 export BRAVE_API_KEY=__
 # Install npx on your OS. For example, linux:  
@@ -70,7 +90,9 @@ archived @modelcontextprotocol/server-brave-search. BRAVE_MCP_ENABLED_TOOLS
 limits the server to plain web search; drop that line if you also want the
 news/image/video/local search tools.
 
-Verify:
+That's it.  
+
+For either method, now Verify:  
 
 ```
 claude mcp list    # should show brave-search
