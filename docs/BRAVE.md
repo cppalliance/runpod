@@ -11,13 +11,15 @@ The motivations for this design are:
 
 ## Brave API usage
 
-There are two ways to reach Brave through the pod:
+There are three ways to reach Brave through the pod:
 
 - **[Claude Code](#claude-code)** — the `brave_web_search` MCP tool available
   inside your Claude Code sessions.
 - **[Brave API (wg21-paperflow)](#brave-api-wg21-paperflow)** — the raw Brave
   REST API, for code that talks to Brave directly (e.g. a local copy of
   `wg21-paperflow`).
+- **[Promptforge](#promptforge)** — the PromptForge Gateway's built-in
+  `web_search` tool, configured through `gateway.local.toml`.
 
 ---
 
@@ -118,5 +120,37 @@ Again, two details matter: the developer's token never leaves the pod, and the
 `X-Subscription-Token` header (the credential Brave actually checks) is
 overwritten with the pod's real `BRAVE_API_KEY` before the request goes
 upstream.
+
+---
+
+## Promptforge
+
+### How to use it
+
+In PromptForge, only the Gateway talks to Brave; the `web_search` tool proxies
+every query through it, so the Brave credential and endpoint live in one place:
+the gateway's TOML config, under `[tools.web_search]`. Its `base_url` field
+defaults to `https://api.search.brave.com/res/v1` and can be pointed at the pod
+instead. In `gateway.local.toml`:
+
+```toml
+[tools.web_search]
+provider = "brave"
+api_key = "${BRAVE_API_KEY}"        # your personal pod API key
+base_url = "${BRAVE_API_BASE}"      # https://<POD_URL>/brave/api
+```
+
+(or hardcode the pod URL directly in `base_url`). The gateway will then issue
+`https://<POD_URL>/brave/api/web/search` requests with the pod key in
+`X-Subscription-Token`, which the pod's nginx swaps for the real Brave key —
+the same `/brave/api/` proxy flow described in the wg21-paperflow section
+above; no new nginx configuration is needed.
+
+One difference from wg21-paperflow: PromptForge reads these values from TOML
+rather than directly from the environment. The `${VAR}` references above are
+interpolated at config load, and if a referenced variable is unset the load
+fails (there is no silent fallback to the default). If you want the "env var
+optional, defaults to Brave" behavior, omit `base_url` from the production
+config and set it only in a developer's local config.
 
 If you discover Brave API use cases which haven't been covered, let us know. More nginx proxies may be added.   
