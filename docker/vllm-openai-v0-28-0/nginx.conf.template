@@ -83,6 +83,7 @@ http {
             proxy_buffering         off;
             proxy_read_timeout      600s;
             proxy_send_timeout      600s;
+            # Default is already chunked_transfer_encoding on;
             chunked_transfer_encoding on;
         }
     }
