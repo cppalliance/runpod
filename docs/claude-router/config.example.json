@@ -2,7 +2,15 @@
   "podUrl": "https://YOUR-POD-8000.proxy.runpod.net",
   "podApiKey": "YOUR_POD_API_KEY",
   "podModels": ["deepseek-v4-pro"],
-  "gateways": [],
+  "gateways": [
+    {
+      "name": "deepseek",
+      "url": "https://api.deepseek.com/anthropic",
+      "apiKey": "YOUR_DEEPSEEK_API_KEY",
+      "models": ["deepseek-flash*"],
+      "sanitizeToolSchemas": true
+    }
+  ],
   "anthropicUrl": "https://api.anthropic.com",
   "host": "127.0.0.1",
   "port": 8787,

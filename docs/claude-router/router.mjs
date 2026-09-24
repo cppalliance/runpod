@@ -25,12 +25,14 @@ const POD_KEY = cfg.podApiKey;
 const POD_MODELS = cfg.podModels ?? [];
 // Extra Anthropic-compatible gateways, each with its own key, tried after the pod:
 //   "gateways": [{ "name": "deepseek", "url": "https://api.deepseek.com/anthropic",
-//                  "apiKey": "sk-...", "models": ["deepseek-flash*"] }]
+//                  "apiKey": "sk-...", "models": ["deepseek-flash*"],
+//                  "sanitizeToolSchemas": true }]
 const GATEWAYS = (cfg.gateways ?? []).map((g) => ({
   name: g.name ?? g.url,
   url: g.url.replace(/\/+$/, ''),
   apiKey: g.apiKey,
   models: g.models ?? [],
+  sanitizeToolSchemas: g.sanitizeToolSchemas ?? false,
 }));
 const ANTHROPIC_URL = (cfg.anthropicUrl ?? 'https://api.anthropic.com').replace(/\/+$/, '');
 const PORT = cfg.port ?? 8787;
@@ -44,6 +46,60 @@ const matches = (model, list) =>
   list.some((m) => (m.endsWith('*') ? model.startsWith(m.slice(0, -1)) : model === m));
 
 const isPodModel = (model) => matches(model, POD_MODELS);
+
+// Validation keywords that stricter function-schema validators reject —
+// DeepSeek's rejects a plain string carrying minLength/maxLength/pattern, which
+// is enough to fail a whole request over one built-in tool. Dropping them
+// changes which values a tool describes as valid, not the shape of its input.
+const DROP_SCHEMA_KEYWORDS = new Set([
+  'minLength', 'maxLength', 'pattern', 'format',
+  'minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf',
+  'minItems', 'maxItems', 'uniqueItems', 'minProperties', 'maxProperties',
+]);
+
+// Where sub-schemas sit, so the walk below only drops keywords in keyword
+// position — a tool with a property genuinely named "pattern" keeps it.
+const SCHEMA_MAPS = new Set(['properties', 'patternProperties', '$defs', 'definitions']);
+const SCHEMA_VALUES = new Set(['items', 'additionalItems', 'additionalProperties',
+  'not', 'if', 'then', 'else', 'contains', 'propertyNames']);
+const SCHEMA_LISTS = new Set(['anyOf', 'oneOf', 'allOf', 'prefixItems']);
+
+function sanitizeSchema(node) {
+  if (Array.isArray(node)) return node.map(sanitizeSchema);
+  if (node === null || typeof node !== 'object') return node;
+  const out = {};
+  for (const [k, v] of Object.entries(node)) {
+    if (DROP_SCHEMA_KEYWORDS.has(k)) continue;
+    if (SCHEMA_MAPS.has(k) && v !== null && typeof v === 'object' && !Array.isArray(v)) {
+      out[k] = Object.fromEntries(Object.entries(v).map(([n, s]) => [n, sanitizeSchema(s)]));
+    } else if (SCHEMA_VALUES.has(k)) {
+      out[k] = sanitizeSchema(v);
+    } else if (SCHEMA_LISTS.has(k) && Array.isArray(v)) {
+      out[k] = v.map(sanitizeSchema);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+// Rewrite tools[].input_schema in a request body, leaving the rest of the JSON
+// alone. Returns the original buffer when there is nothing to change, so bodies
+// without tools reach the upstream exactly as the client sent them.
+function sanitizeToolSchemas(body) {
+  let parsed;
+  try { parsed = JSON.parse(body.toString('utf8')); } catch { return body; }
+  if (!Array.isArray(parsed.tools) || parsed.tools.length === 0) return body;
+  let changed = false;
+  parsed.tools = parsed.tools.map((t) => {
+    if (t === null || typeof t !== 'object' || !t.input_schema) return t;
+    const cleaned = sanitizeSchema(t.input_schema);
+    if (JSON.stringify(cleaned) === JSON.stringify(t.input_schema)) return t;
+    changed = true;
+    return { ...t, input_schema: cleaned };
+  });
+  return changed ? Buffer.from(JSON.stringify(parsed)) : body;
+}
 
 // Hop-by-hop headers, plus ones the upstream fetch must set for itself.
 const DROP_HEADERS = new Set([
@@ -121,12 +177,14 @@ const server = http.createServer(async (req, res) => {
   // Anthropic credentials.
   const headers = forwardHeaders(req.headers, { stripAuth: toPod || Boolean(gateway) });
   let target;
+  let outBody = body;
   if (toPod) {
     headers.authorization = `Bearer ${POD_KEY}`;
     target = `${POD_URL}${url.pathname}`; // drop query (?beta=true) — vLLM has no use for it
   } else if (gateway) {
     headers['x-api-key'] = gateway.apiKey;
     target = `${gateway.url}${url.pathname}`; // drop query (?beta=true) too
+    if (gateway.sanitizeToolSchemas) outBody = sanitizeToolSchemas(body);
   } else {
     target = `${ANTHROPIC_URL}${url.pathname}${url.search}`;
   }
@@ -135,7 +193,7 @@ const server = http.createServer(async (req, res) => {
     const upstreamRes = await fetch(target, {
       method: req.method,
       headers,
-      body: ['GET', 'HEAD'].includes(req.method) ? undefined : body,
+      body: ['GET', 'HEAD'].includes(req.method) ? undefined : outBody,
       redirect: 'manual',
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });

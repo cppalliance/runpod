@@ -40,7 +40,8 @@ Add a `gateways` entry to `~/.local/share/claude-router/config.json`:
       "name": "deepseek",
       "url": "https://api.deepseek.com/anthropic",
       "apiKey": "YOUR_DEEPSEEK_API_KEY",
-      "models": ["deepseek-flash*"]
+      "models": ["deepseek-flash*"],
+      "sanitizeToolSchemas": true
     }
   ],
   "anthropicUrl": "https://api.anthropic.com",
@@ -52,6 +53,14 @@ Add a `gateways` entry to `~/.local/share/claude-router/config.json`:
 
 The file now holds two keys, so keep it readable only by you
 (`chmod 600 ~/.local/share/claude-router/config.json`).
+
+Replace router.mjs:  
+
+```
+mkdir -p ~/.local/share/claude-router
+curl -fsSL -o ~/.local/share/claude-router/router.mjs \
+  https://raw.githubusercontent.com/cppalliance/runpod/master/docs/claude-router/router.mjs
+```
 
 Restart the router and confirm it:
 
@@ -84,47 +93,72 @@ you listed. Your Claude subscription and its OAuth credentials never reach
 DeepSeek, and the DeepSeek key never reaches Anthropic. `deepseek-v4-pro` and
 every other model are untouched.
 
+`sanitizeToolSchemas` works around a stricter validator on DeepSeek's side.
+Claude Code describes some built-in tools with JSON Schema that DeepSeek refuses,
+and one bad tool fails the whole request:
+
+```
+400 Invalid schema for function 'Artifact':
+{"type":"string","minLength":1,"maxLength":1024,"pattern":"^[^\0]*$"}
+is not valid under any of the schemas listed in the 'anyOf' keyword
+```
+
+With the flag on, the router strips length, pattern and range constraints from
+`tools[].input_schema` for this gateway only — the pod and Anthropic keep the
+schemas the client sent. Tools lose a little of the guidance that tells the model
+what a valid value looks like; they do not change shape, and Claude Code still
+checks arguments its own way. Leave the flag off for a gateway that does not
+need it.
+
 ## 3. Add the row to the picker
 
-`ANTHROPIC_CUSTOM_MODEL_OPTION`, from the other page, holds one model — the pod's.
-A second model needs the `modelPicker` setting. Add it to `~/.claude/settings.json`
-alongside the existing `env` block:
+`ANTHROPIC_CUSTOM_MODEL_OPTION` holds one model, so a second one needs the
+`modelPicker` setting. Once you are using it, list both models there and drop the
+three `ANTHROPIC_CUSTOM_MODEL_OPTION*` variables from
+[ARCHITECTING-AND-SUBAGENTS.md](ARCHITECTING-AND-SUBAGENTS.md#4-point-claude-code-at-it):
+one mechanism, no duplicate pod row. In `~/.claude/settings.json`:
 
 ```json
 {
   "env": {
-    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787",
-    "ANTHROPIC_CUSTOM_MODEL_OPTION": "deepseek-v4-pro",
-    "ANTHROPIC_CUSTOM_MODEL_OPTION_NAME": "DeepSeek V4 Pro (pod)",
-    "ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION": "Self-hosted DeepSeek V4 Pro"
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787"
   },
   "modelPicker": {
     "options": [
       {
-        "model": "deepseek-flash",
+        "model": "deepseek-flash[1m]",
         "label": "DeepSeek Flash (hosted)",
         "description": "DeepSeek V4.1 Flash via api.deepseek.com",
         "behavesAs": "claude-sonnet-4-6"
+      },
+      {
+        "model": "deepseek-v4-pro",
+        "label": "DeepSeek V4 Pro (pod)",
+        "description": "Self-hosted DeepSeek V4 Pro",
+        "behavesAs": "claude-opus-4-8"
       }
     ]
   }
 }
 ```
 
-`behavesAs` is what makes the row appear at all. Claude Code drops a picker row
-whose model its catalog does not know, and no build knows `deepseek-flash`;
-naming a model it does know lends that model's client-side handling — prompt
-profile, capability and effort defaults. It changes neither the label nor the
-model ID sent, so DeepSeek still receives `deepseek-flash`. `claude-sonnet-4-6`
-suits it because DeepSeek's endpoint maps `claude-sonnet*` to `deepseek-flash`
-anyway. The pod's row needs none of this: `ANTHROPIC_CUSTOM_MODEL_OPTION` skips
-the catalog check, and `modelPicker` rows do not.
+`behavesAs` is what makes a row appear at all. Claude Code drops a picker row
+whose model its catalog does not know, and it knows neither of these; naming a
+model it does know lends that model's client-side handling — prompt profile,
+capability and effort defaults. It changes neither the label nor the model ID
+sent, so the router still sees `deepseek-flash` and `deepseek-v4-pro`. The
+Claude models chosen mirror DeepSeek's own mapping, where `claude-sonnet*`
+means Flash and `claude-opus*` means V4 Pro.
+
+Without it the row is simply absent, with nothing printed to say why — and a
+model that has no row is still reachable as `--model deepseek-flash`, which
+makes the gap easy to miss.
 
 Put `modelPicker` in `~/.claude/settings.json` even if your `env` block lives in
 a project's `.claude/settings.json`: Claude Code reads this key from user and
 managed settings only, so a project-level copy is ignored. It needs Claude Code
 2.1.242 or newer, and `behavesAs` 2.1.281. `replaceBuiltInOptions` is left off,
-so the row is added after the built-in models and the pod row stays put.
+so both rows are added after the built-in models.
 
 ## 4. Use it
 
@@ -148,9 +182,12 @@ claude-sonnet-5 -> anthropic 200 1438ms
 
 ## Notes
 
-**Long sessions.** Claude Code budgets 200K for a model it cannot size. Write the
-row's `model` as `deepseek-flash[1m]` for DeepSeek's 1M window instead; the
-suffix is stripped before the ID reaches DeepSeek.
+**Context windows.** The `[1m]` on the Flash row buys DeepSeek's 1M window;
+Claude Code strips the suffix before the ID reaches DeepSeek. Do not copy it to
+the pod row. The hosted model has 1M, but the pod is a vLLM started with
+`--max-model-len 393216`, so claiming 1M there would overrun the server late in
+a long session. Left as it is, the pod row inherits Opus's window, comfortably
+inside what the pod serves.
 
 **Web search.** DeepSeek's API serves Claude Code's built-in web search itself,
 so `WebSearch` works while DeepSeek Flash is selected — unlike the pod, where it
