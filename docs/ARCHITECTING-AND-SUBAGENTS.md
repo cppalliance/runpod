@@ -228,3 +228,10 @@ Run the tests, then report failures with the smallest useful excerpt of output.
 
 Watch `journalctl --user -u claude-router -f` while a subagent runs to confirm it
 is going to the pod.
+
+### Models hosted elsewhere
+
+The router dispatches on model name, so a model from another provider is one
+`gateways` entry away — for example DeepSeek's hosted `deepseek-flash`, which
+bills against a prepaid balance rather than the pod. See
+[platform.deepseek.com.md](platform.deepseek.com.md).

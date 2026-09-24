@@ -2,10 +2,13 @@
 // claude-router — dispatch Anthropic-API traffic by model name.
 //
 //   pod models      -> self-hosted vLLM endpoint (Anthropic-compatible /v1/messages)
+//   gateway models  -> any other Anthropic-compatible endpoint, with its own key
+//                      (e.g. DeepSeek at https://api.deepseek.com/anthropic)
 //   everything else -> api.anthropic.com, forwarded byte-for-byte with the
 //                      client's own credentials (subscription OAuth included).
 //
 // Setup and configuration: ../ARCHITECTING-AND-SUBAGENTS.md
+// Hosted DeepSeek as a second gateway: ../platform.deepseek.com.md
 // Config: ./config.json next to this file, or $CLAUDE_ROUTER_CONFIG
 //
 import http from 'node:http';
@@ -20,16 +23,27 @@ const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
 const POD_URL = cfg.podUrl.replace(/\/+$/, '');
 const POD_KEY = cfg.podApiKey;
 const POD_MODELS = cfg.podModels ?? [];
+// Extra Anthropic-compatible gateways, each with its own key, tried after the pod:
+//   "gateways": [{ "name": "deepseek", "url": "https://api.deepseek.com/anthropic",
+//                  "apiKey": "sk-...", "models": ["deepseek-flash*"] }]
+const GATEWAYS = (cfg.gateways ?? []).map((g) => ({
+  name: g.name ?? g.url,
+  url: g.url.replace(/\/+$/, ''),
+  apiKey: g.apiKey,
+  models: g.models ?? [],
+}));
 const ANTHROPIC_URL = (cfg.anthropicUrl ?? 'https://api.anthropic.com').replace(/\/+$/, '');
 const PORT = cfg.port ?? 8787;
 const HOST = cfg.host ?? '127.0.0.1';
 const TIMEOUT_MS = cfg.timeoutMs ?? 660_000;
 
-// A model belongs to the pod if it matches an entry exactly, or an entry ending
+// A model belongs to a list if it matches an entry exactly, or an entry ending
 // in '*' as a prefix (e.g. "deepseek*").
-const isPodModel = (model) =>
+const matches = (model, list) =>
   typeof model === 'string' &&
-  POD_MODELS.some((m) => (m.endsWith('*') ? model.startsWith(m.slice(0, -1)) : model === m));
+  list.some((m) => (m.endsWith('*') ? model.startsWith(m.slice(0, -1)) : model === m));
+
+const isPodModel = (model) => matches(model, POD_MODELS);
 
 // Hop-by-hop headers, plus ones the upstream fetch must set for itself.
 const DROP_HEADERS = new Set([
@@ -76,6 +90,7 @@ async function health(res) {
   }
   res.writeHead(200, { 'content-type': 'application/json' });
   res.end(JSON.stringify({ ok: pod === 'ok', podUrl: POD_URL, pod, podModels: POD_MODELS,
+                           gateways: GATEWAYS.map((g) => ({ name: g.name, url: g.url, models: g.models })),
                            anthropicUrl: ANTHROPIC_URL, listening: `${HOST}:${PORT}` }, null, 2));
 }
 
@@ -98,14 +113,20 @@ const server = http.createServer(async (req, res) => {
     try { model = JSON.parse(body.toString('utf8')).model ?? null; } catch { /* not JSON */ }
   }
   const toPod = isPodModel(model);
-  const upstream = toPod ? 'pod' : 'anthropic';
+  // The pod wins a name it claims; other gateways are tried in config order.
+  const gateway = toPod ? null : GATEWAYS.find((g) => matches(model, g.models));
+  const upstream = toPod ? 'pod' : gateway ? gateway.name : 'anthropic';
 
-  // The pod is a third party: it never sees the client's Anthropic credentials.
-  const headers = forwardHeaders(req.headers, { stripAuth: toPod });
+  // The pod and any extra gateway are third parties: they never see the client's
+  // Anthropic credentials.
+  const headers = forwardHeaders(req.headers, { stripAuth: toPod || Boolean(gateway) });
   let target;
   if (toPod) {
     headers.authorization = `Bearer ${POD_KEY}`;
     target = `${POD_URL}${url.pathname}`; // drop query (?beta=true) — vLLM has no use for it
+  } else if (gateway) {
+    headers['x-api-key'] = gateway.apiKey;
+    target = `${gateway.url}${url.pathname}`; // drop query (?beta=true) too
   } else {
     target = `${ANTHROPIC_URL}${url.pathname}${url.search}`;
   }
@@ -146,5 +167,8 @@ server.setTimeout(0);
 server.listen(PORT, HOST, () => {
   console.log(`claude-router listening on http://${HOST}:${PORT}`);
   console.log(`  pod       ${POD_URL}  models: ${POD_MODELS.join(', ')}`);
+  for (const g of GATEWAYS) {
+    console.log(`  gateway   ${g.url}  models: ${g.models.join(', ')}`);
+  }
   console.log(`  anthropic ${ANTHROPIC_URL} (client credentials forwarded untouched)`);
 });
