@@ -9,6 +9,7 @@
 //
 // Setup and configuration: ../ARCHITECTING-AND-SUBAGENTS.md
 // Hosted DeepSeek as a second gateway: ../platform.deepseek.com.md
+// OpenRouter as a bearer-auth gateway: ../openrouter.ai.md
 // Config: ./config.json next to this file, or $CLAUDE_ROUTER_CONFIG
 //
 import http from 'node:http';
@@ -26,11 +27,16 @@ const POD_MODELS = cfg.podModels ?? [];
 // Extra Anthropic-compatible gateways, each with its own key, tried after the pod:
 //   "gateways": [{ "name": "deepseek", "url": "https://api.deepseek.com/anthropic",
 //                  "apiKey": "sk-...", "models": ["deepseek-flash*"],
-//                  "sanitizeToolSchemas": true }]
+//                  "sanitizeToolSchemas": true },
+//                { "name": "openrouter", "url": "https://openrouter.ai/api",
+//                  "apiKey": "sk-or-...", "auth": "bearer",
+//                  "models": ["deepseek/*"], "sanitizeToolSchemas": true }]
+// "auth" picks how the key is presented: "x-api-key" (default) or "bearer".
 const GATEWAYS = (cfg.gateways ?? []).map((g) => ({
   name: g.name ?? g.url,
   url: g.url.replace(/\/+$/, ''),
   apiKey: g.apiKey,
+  auth: (g.auth ?? 'x-api-key').toLowerCase(),
   models: g.models ?? [],
   sanitizeToolSchemas: g.sanitizeToolSchemas ?? false,
 }));
@@ -182,7 +188,8 @@ const server = http.createServer(async (req, res) => {
     headers.authorization = `Bearer ${POD_KEY}`;
     target = `${POD_URL}${url.pathname}`; // drop query (?beta=true) — vLLM has no use for it
   } else if (gateway) {
-    headers['x-api-key'] = gateway.apiKey;
+    if (gateway.auth === 'bearer') headers.authorization = `Bearer ${gateway.apiKey}`;
+    else headers['x-api-key'] = gateway.apiKey;
     target = `${gateway.url}${url.pathname}`; // drop query (?beta=true) too
     if (gateway.sanitizeToolSchemas) outBody = sanitizeToolSchemas(body);
   } else {
@@ -226,7 +233,7 @@ server.listen(PORT, HOST, () => {
   console.log(`claude-router listening on http://${HOST}:${PORT}`);
   console.log(`  pod       ${POD_URL}  models: ${POD_MODELS.join(', ')}`);
   for (const g of GATEWAYS) {
-    console.log(`  gateway   ${g.url}  models: ${g.models.join(', ')}`);
+    console.log(`  gateway   ${g.url}  models: ${g.models.join(', ')} (${g.auth})`);
   }
   console.log(`  anthropic ${ANTHROPIC_URL} (client credentials forwarded untouched)`);
 });

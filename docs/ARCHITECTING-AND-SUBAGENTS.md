@@ -234,4 +234,6 @@ is going to the pod.
 The router dispatches on model name, so a model from another provider is one
 `gateways` entry away — for example DeepSeek's hosted `deepseek-flash`, which
 bills against a prepaid balance rather than the pod. See
-[platform.deepseek.com.md](platform.deepseek.com.md).
+[platform.deepseek.com.md](platform.deepseek.com.md), and
+[openrouter.ai.md](openrouter.ai.md) for reaching the same model through
+OpenRouter instead, which can refill its own balance.

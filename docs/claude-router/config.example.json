@@ -9,6 +9,14 @@
       "apiKey": "YOUR_DEEPSEEK_API_KEY",
       "models": ["deepseek-flash*"],
       "sanitizeToolSchemas": true
+    },
+    {
+      "name": "openrouter",
+      "url": "https://openrouter.ai/api",
+      "apiKey": "YOUR_OPENROUTER_API_KEY",
+      "auth": "bearer",
+      "models": ["deepseek/*"],
+      "sanitizeToolSchemas": true
     }
   ],
   "anthropicUrl": "https://api.anthropic.com",

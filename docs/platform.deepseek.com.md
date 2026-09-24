@@ -25,6 +25,10 @@ top up again. The Top up page lists the payment methods your account and region
 support, and some accounts are asked to complete real-name verification before a
 first top-up — the console prompts if yours is one of them.
 
+If that errand bothers you, the same model is reachable through OpenRouter,
+which does auto-recharge and can cap spending per key —
+[openrouter.ai.md](openrouter.ai.md).
+
 ## 2. Add the gateway to the router
 
 The router dispatches by model name, so a new model needs a new destination.
@@ -74,7 +78,7 @@ The banner should now carry a `gateway` line:
 ```
 claude-router listening on http://127.0.0.1:8787
   pod       https://YOUR-POD-8000.proxy.runpod.net  models: deepseek-v4-pro
-  gateway   https://api.deepseek.com/anthropic  models: deepseek-flash*
+  gateway   https://api.deepseek.com/anthropic  models: deepseek-flash* (x-api-key)
   anthropic https://api.anthropic.com (client credentials forwarded untouched)
 ```
 
