@@ -16,6 +16,12 @@ http {
 
     access_log /dev/stdout;
 
+    # Runtime DNS for the variable-based proxy_pass in /brave/api/ (and any
+    # future variable proxy_pass). nginx does NOT read /etc/resolv.conf on its
+    # own; this is what lets it resolve the Brave host at request time instead
+    # of once at boot.
+    resolver 8.8.8.8 1.1.1.1 valid=30s ipv6=off;
+
     server {
         listen 8000;
 
@@ -43,10 +49,20 @@ http {
         location /brave/api/ {
             include /tmp/nginx_auth.conf;
 
-            proxy_pass            https://api.search.brave.com/res/v1/;
+            # Resolve api.search.brave.com at *request* time rather than once
+            # at boot. A DNS hiccup during startup then can't abort nginx with
+            # "[emerg] host not found in upstream". Using a variable in
+            # proxy_pass disables nginx's config-time resolution, so we must
+            # supply the Host header and SNI name explicitly (they would
+            # otherwise be empty because $proxy_host is unset for variables).
+            set $brave_upstream api.search.brave.com;
+
+            proxy_pass            https://$brave_upstream/res/v1/;
             proxy_ssl_server_name on;
-            proxy_set_header      Authorization         "";   # drop dev auth
-            proxy_set_header      X-Subscription-Token  "${BRAVE_API_KEY}";
+            proxy_ssl_name        $brave_upstream;
+            proxy_set_header      Host                 $brave_upstream;
+            proxy_set_header      Authorization        "";   # drop dev auth
+            proxy_set_header      X-Subscription-Token "${BRAVE_API_KEY}";
             proxy_read_timeout    30s;
         }
 

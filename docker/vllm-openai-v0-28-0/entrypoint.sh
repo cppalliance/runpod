@@ -73,8 +73,28 @@ export BRAVE_API_KEY
 envsubst '${BRAVE_API_KEY}' \
     < /etc/nginx/nginx.conf.template > /tmp/nginx.conf
 
-# Start nginx
-nginx -c /tmp/nginx.conf
+# Start nginx.
+#
+# nginx resolves a literal hostname in `proxy_pass` ONCE, at config-load time.
+# At pod boot, DNS/outbound networking may not be up yet, so nginx can abort
+# with "[emerg] host not found in upstream" and exit non-zero. Because this
+# script runs under `set -e`, a bare `nginx -c ...` would kill the whole
+# entrypoint BEFORE vLLM starts, crashing the pod in a loop.
+#
+# So: start nginx in the background with a bounded retry. vLLM starts
+# immediately regardless, and nginx joins the front door once DNS is ready.
+# (The template also uses a variable proxy_pass + resolver so nginx resolves
+# the Brave host at request time rather than at boot — belt and suspenders.)
+(
+    for attempt in $(seq 1 30); do
+        if nginx -c /tmp/nginx.conf 2>/tmp/nginx.startup.log; then
+            exit 0
+        fi
+        echo "WARNING: nginx failed to start (attempt ${attempt}/30); retrying in 10s" >&2
+        sleep 10
+    done
+    echo "ERROR: nginx never started; /brave/api and /v1/* front door unavailable." >&2
+) &
 
 # Start the Brave Search MCP server on loopback only. The nginx
 # location /brave/mcp provides per-developer auth and proxies to it.
