@@ -2,6 +2,11 @@
 Name: H200-x2-deepseek-flash
 GPU: NVIDIA H200 SXM
 Container Image: cppalliance/vllm-openai:v0.28.0v3
+# Tuning note: if this pod ever hits an inference-time OOM (HTTP 500 / CUDA
+# "out of memory" / hung requests), lower --gpu-memory-utilization 0.93 -> 0.88
+# and relaunch. Stress-tested at 8x ~222k-token concurrent prefills (see
+# scripts/runpodtest2.sh) with no failure, so 0.93 holds today; 0.88 is the
+# safe fallback if the workload grows.
 Container start command: deepseek-ai/DeepSeek-V4-Flash-DSpark --tensor-parallel-size 2 --enable-expert-parallel --enable-ep-weight-filter --max-model-len 262144 --max-num-seqs 8 --gpu-memory-utilization 0.93 --trust-remote-code --served-model-name deepseek-v4-pro deepseek-v4-flash gpt-4o gpt-4o-mini default --kv-cache-dtype fp8 --speculative-config '{"method":"dspark","num_speculative_tokens":7,"draft_sample_method":"greedy"}' --reasoning-parser deepseek_v4 --reasoning-config '{"reasoning_start_str":"<think>","reasoning_end_str":"</think>"}' --enable-auto-tool-choice --tool-call-parser deepseek_v4 --enable-log-requests --uvicorn-log-level info
 Container disk: 200GB
 Volume disk: 1000GB

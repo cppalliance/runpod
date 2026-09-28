@@ -1,5 +1,8 @@
 # pod1.cpp.al — SaaS failover (RunPod pod offline)
 
+NOTE: 2026-09-28 this was partly initially developed, and then put aside,
+since a real pod is better than routing to an api. NOT COMPLETED.
+
 When the RunPod vLLM pod is offline, this config keeps `https://pod1.cpp.al`
 answering, backed by a hosted LLM provider (**OpenRouter** or **Anthropic**)
 instead of the pod. It is a drop-in replacement for the pod's own nginx config
