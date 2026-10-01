@@ -126,7 +126,8 @@ location /brave/api/ {
 
     set $brave_upstream api.search.brave.com;
 
-    proxy_pass            https://$brave_upstream/res/v1/;
+    rewrite ^/brave/api/(.*)$ /res/v1/$1 break;
+    proxy_pass            https://$brave_upstream;
     proxy_ssl_server_name on;
     proxy_ssl_name        $brave_upstream;
     proxy_set_header      Host                 $brave_upstream;
