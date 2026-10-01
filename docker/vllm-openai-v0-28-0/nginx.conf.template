@@ -47,7 +47,9 @@ http {
         # way upstream. The path /brave/api/web/search rewrites to
         # https://api.search.brave.com/res/v1/web/search via the proxy_pass.
         location /brave/api/ {
-            include /tmp/nginx_auth.conf;
+            # Accepts the pod key as either "Authorization: Bearer <key>" or
+            # "X-Subscription-Token: <key>" (what real Brave clients send).
+            include /tmp/nginx_auth_brave.conf;
 
             # Resolve api.search.brave.com at *request* time rather than once
             # at boot. A DNS hiccup during startup then can't abort nginx with

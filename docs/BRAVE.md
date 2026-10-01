@@ -102,16 +102,36 @@ Brave search on your behalf.
 The pod's nginx sits in front of the real Brave REST API. It takes your request
 to `/brave/api/web/search`, rewrites it to `https://api.search.brave.com/res/v1/web/search`,
 and — crucially — replaces your token with the real shared Brave key on the way
-out:
+out.
+
+Brave clients (wg21-paperflow, PromptForge) send their key the way the real
+Brave API expects, as `X-Subscription-Token: <key>`, with no `Authorization`
+header. So `/brave/api/` accepts your personal pod key in **either** header:
+
+```bash
+# what Brave clients send (drop-in for the real Brave API)
+curl -G "$POD_URL/brave/api/web/search" --data-urlencode "q=pie recipes" \
+  -H "X-Subscription-Token: $API_KEY"
+
+# also accepted, same as the rest of the pod
+curl -G "$POD_URL/brave/api/web/search" --data-urlencode "q=pie recipes" \
+  -H "Authorization: Bearer $API_KEY"
+```
 
 ```nginx
 location /brave/api/ {
-    include /tmp/nginx_auth.conf;
+    # accepts the pod key as Authorization: Bearer <key>
+    # or as X-Subscription-Token: <key>
+    include /tmp/nginx_auth_brave.conf;
 
-    proxy_pass            https://api.search.brave.com/res/v1/;
+    set $brave_upstream api.search.brave.com;
+
+    proxy_pass            https://$brave_upstream/res/v1/;
     proxy_ssl_server_name on;
-    proxy_set_header      Authorization         "";   # drop dev auth
-    proxy_set_header      X-Subscription-Token  "${BRAVE_API_KEY}";
+    proxy_ssl_name        $brave_upstream;
+    proxy_set_header      Host                 $brave_upstream;
+    proxy_set_header      Authorization        "";   # drop dev auth
+    proxy_set_header      X-Subscription-Token "${BRAVE_API_KEY}";
     proxy_read_timeout    30s;
 }
 ```
@@ -119,7 +139,11 @@ location /brave/api/ {
 Again, two details matter: the developer's token never leaves the pod, and the
 `X-Subscription-Token` header (the credential Brave actually checks) is
 overwritten with the pod's real `BRAVE_API_KEY` before the request goes
-upstream.
+upstream. Whichever header carried your pod key, Brave only ever sees the real
+one.
+
+`/brave/api/` is the only path that accepts `X-Subscription-Token`. The other
+paths (`/v1/...`, `/brave/mcp`) still require `Authorization: Bearer <key>`.
 
 ---
 

@@ -59,6 +59,23 @@ cat >> "$auth_snippet" <<'EOF'
 if ($auth_ok = 0) { return 401 '{"error":"Unauthorized"}\n'; }
 EOF
 
+# Brave REST clients (wg21-paperflow, PromptForge) speak the real Brave API,
+# which carries the credential in "X-Subscription-Token: <key>" with no
+# Authorization header. /brave/api/ therefore accepts a pod key in either
+# header. A missing X-Subscription-Token yields "Bearer ", which never matches
+# a key or sentinel.
+brave_auth_snippet=/tmp/nginx_auth_brave.conf
+grep '^set \$expected' "$auth_snippet" > "$brave_auth_snippet"
+{
+    printf 'set $auth_ok 0;\n'
+    printf 'set $brave_bearer "Bearer $http_x_subscription_token";\n'
+    for n in $(seq 1 "$NUM_KEYS"); do
+        printf 'if ($http_authorization = $expected%s) { set $auth_ok 1; }\n' "$n"
+        printf 'if ($brave_bearer = $expected%s) { set $auth_ok 1; }\n' "$n"
+    done
+    printf '%s\n' "if (\$auth_ok = 0) { return 401 '{\"error\":\"Unauthorized\"}\\n'; }"
+} >> "$brave_auth_snippet"
+
 mkdir -p /tmp/nginx_client_body /tmp/nginx_proxy /tmp/nginx_fastcgi \
          /tmp/nginx_uwsgi /tmp/nginx_scgi
 
