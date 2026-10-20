@@ -83,5 +83,10 @@ server {
         # to be at least as generous as the longest one, so use 1h globally.
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
+
+        # Request body cap; must match the pod's nginx. The 1 MB default
+        # rejects chat requests past ~250k tokens with HTTP 413, since clients
+        # resend the whole conversation every turn.
+        client_max_body_size 32m;
     }
 }

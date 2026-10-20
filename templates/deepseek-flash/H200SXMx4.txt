@@ -1,7 +1,7 @@
 
 Name: H200-x4-deepseek-flash
 GPU: NVIDIA H200 SXM
-Container Image: cppalliance/vllm-openai:v0.28.0v6
+Container Image: cppalliance/vllm-openai:v0.28.0v7
 # 4x variant of H200SXM.txt. Same model and same weights: more GPUs do not make
 # Flash smarter. The extra memory pays for two quality changes:
 #   1. --max-model-len 262144 -> 393216. DeepSeek and the vLLM recipe give

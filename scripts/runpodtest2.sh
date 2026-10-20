@@ -97,6 +97,7 @@ wait
 
 echo "== results =="
 fail=0
+client_fail=0   # 4xx: rejected before/at the door (size, auth, too many tokens), not memory
 for i in $(seq 1 "$CONCURRENCY"); do
   code=$(cat "$TMP/code_${i}.txt")
   if [[ "$code" == "200" ]] && grep -q '"choices"' "$TMP/resp_${i}.json"; then
@@ -106,12 +107,20 @@ for i in $(seq 1 "$CONCURRENCY"); do
     echo "  req $i: FAIL (HTTP $code)"
     echo "    body: $(head -c 400 "$TMP/resp_${i}.json")"
     fail=$((fail + 1))
+    [[ "$code" == 4* ]] && client_fail=$((client_fail + 1))
   fi
 done
 
 if [[ "$fail" -eq 0 ]]; then
   echo "PASS: all ${CONCURRENCY} requests succeeded — memory headroom is sufficient."
   exit 0
+elif [[ "$client_fail" -eq "$fail" ]]; then
+  # Every failure was a 4xx, so the GPUs never ran the load: this is NOT a
+  # memory result. 413 = an nginx client_max_body_size is too small (pod or
+  # pod1.cpp.al); 400 = prompt exceeds --max-model-len; 401 = bad API_KEY.
+  echo "INCONCLUSIVE: ${fail}/${CONCURRENCY} requests were rejected with 4xx before"
+  echo "      inference ran — fix the request/proxy issue above and rerun."
+  exit 2
 else
   echo "FAIL: ${fail}/${CONCURRENCY} requests failed — reduce --gpu-memory-utilization"
   echo "      (0.93 -> 0.88) and/or --max-num-seqs / speculative tokens."

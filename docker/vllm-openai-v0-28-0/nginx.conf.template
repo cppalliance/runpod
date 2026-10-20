@@ -16,6 +16,13 @@ http {
 
     access_log /dev/stdout;
 
+    # Request body cap. nginx's default is 1 MB, which a chat request crosses
+    # at ~250k tokens (Claude Code resends the whole conversation every turn),
+    # so long sessions failed with HTTP 413 before reaching vLLM. 32 MB covers
+    # a full 1M-token context plus some images; vLLM still enforces
+    # --max-model-len on whatever gets through.
+    client_max_body_size 32m;
+
     # Runtime DNS for the variable-based proxy_pass in /brave/api/ (and any
     # future variable proxy_pass). nginx does NOT read /etc/resolv.conf on its
     # own; this is what lets it resolve the Brave host at request time instead
