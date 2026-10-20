@@ -1,0 +1,45 @@
+
+Name: H200-x4-deepseek-flash
+GPU: NVIDIA H200 SXM
+Container Image: cppalliance/vllm-openai:v0.28.0v6
+# 4x variant of H200SXM.txt. Same model and same weights: more GPUs do not make
+# Flash smarter. The extra memory pays for two quality changes:
+#   1. --max-model-len 262144 -> 393216. DeepSeek and the vLLM recipe give
+#      384K as the minimum for Think Max, because shorter windows cut off
+#      max-effort reasoning. This also matches the 8x Pro pod, so client
+#      configs written for Pro work unchanged.
+#   2. --default-chat-template-kwargs reasoning_effort=max, so a request that
+#      doesn't ask for an effort level gets Think Max. In DeepSeek's own
+#      benchmarks Flash-Max comes close to Pro-Max on reasoning and coding
+#      (GPQA 88.1 vs 90.1, SWE-Verified 79.0 vs 80.6) but stays well behind on
+#      knowledge and agentic work (SimpleQA 34 vs 58, Terminal Bench 57 vs 68).
+#      A request that sets its own chat_template_kwargs still overrides this.
+#      Expect longer, slower answers.
+#   3. --max-num-seqs 8 -> 12, so long Think Max requests don't tie up every
+#      slot and leave other queries waiting.
+# Everything else stays the same on purpose: fp8 KV cache (the Pro pod uses it
+# too) and 0.93 memory utilization. Each GPU carries less load than on the 2x
+# pod: the weights are split 4 ways, and 12 x 393k is about 2.25x the KV of
+# 8 x 262k, spread over twice the GPUs (~1.1x per GPU, against half the weights).
+# vLLM reserves the KV cache at startup and queues requests when it is full.
+# Verify after launch: send one request with no chat_template_kwargs and one
+# with {"reasoning_effort":"high"}. The default (max) request should reason
+# noticeably longer. Some vLLM builds have rendered "max" the same as "high";
+# if the two look alike, this flag does nothing and only the context change
+# helps.
+# Tuning note: if this pod ever hits an inference-time OOM (HTTP 500 / CUDA
+# "out of memory" / hung requests), lower --gpu-memory-utilization 0.93 -> 0.88
+# and relaunch. The 2x pod passed scripts/runpodtest2.sh at 8x ~222k tokens;
+# rerun it here at ~380k (./runpodtest2.sh 380000 12) to confirm this pod.
+Container start command: deepseek-ai/DeepSeek-V4-Flash-DSpark --tensor-parallel-size 4 --enable-expert-parallel --enable-ep-weight-filter --max-model-len 393216 --max-num-seqs 12 --gpu-memory-utilization 0.93 --trust-remote-code --served-model-name deepseek-v4-pro deepseek-v4-flash gpt-4o gpt-4o-mini default --kv-cache-dtype fp8 --speculative-config '{"method":"dspark","num_speculative_tokens":7,"draft_sample_method":"greedy"}' --reasoning-parser deepseek_v4 --reasoning-config '{"reasoning_start_str":"<think>","reasoning_end_str":"</think>"}' --default-chat-template-kwargs '{"reasoning_effort":"max"}' --enable-auto-tool-choice --tool-call-parser deepseek_v4 --enable-log-requests --uvicorn-log-level info
+Container disk: 200GB
+Volume disk: 1000GB
+Environment Variables:
+HF_HOME=/workspace/hf
+HUGGINGFACE_HUB_CACHE=/workspace/hf/hub
+TRANSFORMERS_CACHE=/workspace/hf/transformers
+TORCH_HOME=/workspace/hf/torch
+BRAVE_API_KEY=
+API_KEY=
+...
+API_KEY16=

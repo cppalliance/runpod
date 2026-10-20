@@ -1,7 +1,7 @@
 
 Name: H200-x2-deepseek-flash
 GPU: NVIDIA H200 SXM
-Container Image: cppalliance/vllm-openai:v0.28.0v3
+Container Image: cppalliance/vllm-openai:v0.28.0v6
 # Tuning note: if this pod ever hits an inference-time OOM (HTTP 500 / CUDA
 # "out of memory" / hung requests), lower --gpu-memory-utilization 0.93 -> 0.88
 # and relaunch. Stress-tested at 8x ~222k-token concurrent prefills (see
