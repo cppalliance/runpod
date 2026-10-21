@@ -1,6 +1,6 @@
 Name: H200-x4-deepseek-v4.1-flash
 GPU: NVIDIA H200 SXM
-Container Image: vllm/vllm-openai:cu134-nightly
+Container Image: cppalliance/vllm-openai:v0.32.0v1
 
 # =============================================================================
 # DEEPSEEK V4.1 FLASH — HARDWARE REQUIREMENTS (IMPORTANT — PLEASE READ)
@@ -28,8 +28,9 @@ Container Image: vllm/vllm-openai:cu134-nightly
 #
 # Changes from the V4 Flash template (H200SXMx4.txt):
 #   - Model: DeepSeek-V4-Flash-DSpark -> DeepSeek-V4.1-Flash-1017
-#   - Container: vllm-openai:v0.28.0v7 -> vllm/vllm-openai:cu134-nightly
-#     (vLLM 0.31.0+ is required; the cppalliance images only go up to 0.28.0v7)
+#   - Container: vllm-openai:v0.28.0v7 -> cppalliance/vllm-openai:v0.32.0v1
+#     (vLLM 0.31.0+ is required; this custom image adds nginx auth, DCGM,
+#      Brave Search MCP, and the full entrypoint on top of v0.32.0)
 #   - Architecture: encoder-decoder with engram n-gram memory
 #   - Tokenizer: --tokenizer-mode deepseek_v41 (new for V4.1)
 #   - Attention: --attention-config with FLASHINFER_MLA_SPARSE_DSV41
