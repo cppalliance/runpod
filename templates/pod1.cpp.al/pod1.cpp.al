@@ -8,7 +8,7 @@
 # churn: clients point at https://pod1.cpp.al, and this nginx forwards every
 # request, unchanged, to whatever pod URL is configured below.
 #
-# When the pod is relaunched, edit the ONE proxy_pass line below and reload:
+# When the pod is relaunched, edit the ONE "set $pod_upstream" line below and reload:
 #
 #     sudo systemctl reload nginx
 #
@@ -50,19 +50,35 @@ server {
     ssl_certificate     /etc/letsencrypt/live/pod1.cpp.al/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/pod1.cpp.al/privkey.pem;
 
-    # The pod URL is referenced here (proxy_pass), for SNI, and for the Host
-    # header. RunPod's proxy routes by hostname
+    # The pod URL is set once ($pod_upstream) and used for proxy_pass, SNI, and
+    # the Host header. RunPod's proxy routes by hostname
     # (<pod-id>-8000.proxy.runpod.net), so Host and SNI MUST be the RunPod
     # URL — never pod1.cpp.al. pod1.cpp.al survives only in
     # X-Forwarded-Host, which is informational and ignored by routing.
 
+    # RunPod's hostname sits behind Cloudflare and resolves to both IPv4 and
+    # IPv6 addresses. This host has no IPv6 route, so a plain
+    # "proxy_pass https://<name>" (resolved once, at reload, via the system
+    # resolver) tried the IPv6 addresses first and logged
+    # "connect() to [2606:4700::...]:443 failed (101: Network is unreachable)"
+    # before falling back to IPv4. A variable in proxy_pass makes nginx resolve
+    # at request time with this resolver instead: ipv6=off asks for IPv4 only,
+    # and valid=30s also picks up Cloudflare IP changes without a reload.
+    resolver 1.1.1.1 8.8.8.8 valid=30s ipv6=off;
+
     location / {
         # >>> CHANGE THIS ONE LINE when the pod URL changes <<<
-        proxy_pass https://<pod-id>-8000.proxy.runpod.net;
+        set $pod_upstream <pod-id>-8000.proxy.runpod.net;
 
-        # Host and SNI must name the upstream, not us.
-        proxy_set_header    Host                $proxy_host;
-        proxy_ssl_server_name on;   # send SNI = <pod-id>-8000.proxy.runpod.net
+        # No URI after the host, so the original request URI (path + query)
+        # passes through unchanged.
+        proxy_pass https://$pod_upstream;
+
+        # Host and SNI must name the upstream, not us. With a variable in
+        # proxy_pass, set both explicitly from the same variable.
+        proxy_set_header    Host                $pod_upstream;
+        proxy_ssl_server_name on;
+        proxy_ssl_name      $pod_upstream;
 
         # Credentials and forwarding metadata. Authorization must NOT be
         # stripped here — the pod's nginx checks it.

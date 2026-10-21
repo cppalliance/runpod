@@ -9,7 +9,7 @@ settings — so a relaunched pod means every developer has to update their
 config.
 
 `pod1.cpp.al` is a fixed hostname that forwards everything to the pod. When
-the pod moves, we change **one `proxy_pass` line** here and reload nginx;
+the pod moves, we change **one `set $pod_upstream` line** here and reload nginx;
 developers' configurations never change.
 
 ## How it works
@@ -55,7 +55,7 @@ which is informational and ignored by routing.
    ```
    (The `.well-known/acme-challenge` location handles the HTTP-01 flow; certbot
    rewrites the `ssl_certificate*` lines to point at `/etc/letsencrypt/live/`.)
-4. Edit the `proxy_pass` line in the `443` server block, replacing
+4. Edit the `set $pod_upstream` line in the `443` server block, replacing
    `<pod-id>-8000.proxy.runpod.net` with the current pod URL.
 5. Validate and reload:
    ```
@@ -64,7 +64,7 @@ which is informational and ignored by routing.
 
 ## When the pod is relaunched
 
-Get the new pod URL from the RunPod console, update the single `proxy_pass`
+Get the new pod URL from the RunPod console, update the single `set $pod_upstream`
 line, then `sudo nginx -t && sudo systemctl reload nginx`. Done.
 
 ## Test
