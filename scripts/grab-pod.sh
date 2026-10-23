@@ -9,6 +9,7 @@
 set -u
 
 set -ex
+set -o pipefail   # so rc below reflects runpodctl, not the redact filter
 
 export RUNPOD_API_KEY=__
 
@@ -24,6 +25,13 @@ LOG="$HOME/grab-pod.log"
 
 # Output that means "no capacity right now, try again later".
 UNAVAILABLE_RE='no longer any instances|no instances|not available|insufficient|capacity'
+
+redact() {  # stdin -> stdout: blank the value of any env var whose name contains "key" (any case)
+  sed -E \
+    -e 's/("[^"=]*key[^"=]*=)([^"\\]|\\.)*"/\1___"/gI' \
+    -e 's/("[^"]*key[^"]*"[[:space:]]*:[[:space:]]*")([^"\\]|\\.)*"/\1___"/gI' \
+    -e 's/(^|[^A-Za-z0-9_"])([A-Za-z0-9_]*key[A-Za-z0-9_]*=)[^"[:space:]]+/\1\2___/gI'
+}
 
 notify() {  # $1 = subject, $2 = body
   printf '%s\n' "$2" | mail -s "$1" "$NOTIFY_EMAIL"
@@ -50,7 +58,7 @@ while true; do
           --gpu-count "$GPU_COUNT" \
           --cloud-type SECURE \
           --volume-in-gb "$VOLUME_GB" \
-          --volume-mount-path "$VOLUME_PATH" 2>&1) || rc=$?
+          --volume-mount-path "$VOLUME_PATH" 2>&1 | redact) || rc=$?
   echo "[$ts] attempt $attempt rc=$rc: $out" >> "$LOG"
 
   # Ground truth: does a pod with our name now exist? Never trust output parsing alone,
@@ -63,7 +71,7 @@ while true; do
 runpodctl output:
 $out
 
-$(runpodctl pod list 2>&1)"
+$(runpodctl pod list 2>&1 | redact)"
     exit 0
   fi
 
