@@ -38,12 +38,18 @@ Container Image: cppalliance/vllm-openai:v0.32.0v1
 #   - Spec decoding: 7-token DSpark (V4) -> 5-token DSpark (V4.1, no MTP)
 #   - Reasoning parser: deepseek_v4 -> deepseek_v41
 #   - Tool call parser: deepseek_v4 -> deepseek_v41
-#   - Reasoning effort: "max" (too expensive on V4.1) -> "high" (effort 50)
+#   - Reasoning effort: "max" -> "xhigh" (effort 75). In vLLM, low/high/xhigh/max
+#     = 25/50/75/100 (DeepSeek's API "high" is 75, not 50). The vLLM recipe
+#     says 60-80 recovers most of max's accuracy at well under half the
+#     tokens. Max is benchmarked with a 256K output budget, which can hit
+#     finish_reason=length under --max-model-len 262144 once the prompt is
+#     long. Clients can still request "max" per call. Note: vLLM rejects
+#     "medium" and "minimal" for this model.
 #   - --enable-expert-parallel removed (deprecated for V4.1)
 #   - --enable-ep-weight-filter removed (deprecated for V4.1)
 # =============================================================================
 
-Container start command: deepseek-ai/DeepSeek-V4.1-Flash-1017 --tokenizer-mode deepseek_v41 --tensor-parallel-size 4 --attention-config '{"backend":"FLASHINFER_MLA_SPARSE_DSV41","indexer_kv_dtype":"mxfp4","indexer_sparse_logits":true}' --kv-cache-dtype fp8 --max-model-len 262144 --max-num-seqs 32 --gpu-memory-utilization 0.92 --trust-remote-code --served-model-name deepseek-v4-pro deepseek-v4-flash deepseek-flash gpt-4o gpt-4o-mini default --engram-config '{"cpu_offload":true}' --speculative-config '{"method":"dspark","num_speculative_tokens":5,"draft_sample_method":"probabilistic","rejection_sample_method":"block","enable_adaptive_verification":true}' --reasoning-parser deepseek_v41 --reasoning-config '{"reasoning_start_str":" thinking","reasoning_end_str":" response"}' --default-chat-template-kwargs '{"reasoning_effort":"high"}' --enable-auto-tool-choice --tool-call-parser deepseek_v41 --enable-log-requests --uvicorn-log-level info
+Container start command: deepseek-ai/DeepSeek-V4.1-Flash-1017 --tokenizer-mode deepseek_v41 --tensor-parallel-size 4 --attention-config '{"backend":"FLASHINFER_MLA_SPARSE_DSV41","indexer_kv_dtype":"mxfp4","indexer_sparse_logits":true}' --kv-cache-dtype fp8 --max-model-len 262144 --max-num-seqs 32 --gpu-memory-utilization 0.92 --trust-remote-code --served-model-name deepseek-v4-pro deepseek-v4-flash deepseek-flash gpt-4o gpt-4o-mini default --engram-config '{"cpu_offload":true}' --speculative-config '{"method":"dspark","num_speculative_tokens":5,"draft_sample_method":"probabilistic","rejection_sample_method":"block","enable_adaptive_verification":true}' --reasoning-parser deepseek_v41 --reasoning-config '{"reasoning_start_str":" thinking","reasoning_end_str":" response"}' --default-chat-template-kwargs '{"reasoning_effort":"xhigh"}' --enable-auto-tool-choice --tool-call-parser deepseek_v41 --enable-log-requests --uvicorn-log-level info
 Container disk: 200GB
 Volume disk: 1000GB
 Environment Variables:
