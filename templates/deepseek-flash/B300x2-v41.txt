@@ -1,0 +1,67 @@
+Name: B300-x2-deepseek-v4.1-flash
+GPU: NVIDIA B300
+Container Image: cppalliance/vllm-openai:v0.32.0v1
+
+# =============================================================================
+# DEEPSEEK V4.1 FLASH ON 2x B300 — HARDWARE NOTES (PLEASE READ)
+# =============================================================================
+#
+# This template uses 2x B300 (288 GB HBM3e each = 576 GB, ~536 GiB total).
+# It is the Blackwell counterpart of H200SXMx4-v41.txt; see that file for the
+# full list of V4.1 changes (tokenizer, engram, DSpark, parsers, effort).
+#
+# Memory: with engram CPU offload the GPU-resident weights are ~328 GiB, so
+# at TP2 that is ~164 GiB per GPU, leaving roughly 100 GiB per GPU for KV
+# cache (vs ~38.5 GiB per GPU on 4x H200). Engram offload is kept because the
+# vLLM recipe uses it for Blackwell TP2, and without it the full 476 GiB
+# checkpoint would leave almost no KV headroom.
+#
+# Differences from H200SXMx4-v41.txt:
+#   - GPU: 4x H200 SXM -> 2x B300;  --tensor-parallel-size 4 -> 2
+#   - Attention: Blackwell settings from the recipe:
+#       --attention-config '{"backend":"FLASHINFER_MLA_SPARSE_DSV41",
+#                            "indexer_kv_dtype":"mxfp4",
+#                            "indexer_sparse_logits":true}'
+#     mxfp4 requires Blackwell datacenter GPUs (sm_10x). Do NOT copy this
+#     flag to Hopper (H100/H200) templates; it fails at startup there.
+#   - --max-model-len 262144 -> 393216, matching the V4 templates. The extra
+#     KV headroom makes room for long max-effort answers, which can stop at
+#     finish_reason=length under 262144. The model supports up to 1048576.
+#   - --max-num-seqs stays 32 (the recipe uses 128 for Blackwell, but we
+#     expect ~10 concurrent users). A lower cap leaves slightly more memory
+#     for KV cache and limits how many long requests compete for it.
+#
+# Cost (RunPod secure cloud, Oct 2026): 2x B300 ~$17.98/hr vs 4x H200 ~$21.16/hr.
+#
+# Untested on RunPod as of 2026-10-23. B300 is sm_103; if workers fail with
+# "no kernel image" errors, the base vllm/vllm-openai:v0.32.0 build lacks
+# sm_103 kernels and a CUDA 13 (cu130) build is needed.
+#
+# Recipe: https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4.1-Flash
+# =============================================================================
+
+Container start command: deepseek-ai/DeepSeek-V4.1-Flash-1017 --tokenizer-mode deepseek_v41 --tensor-parallel-size 2 --attention-config '{"backend":"FLASHINFER_MLA_SPARSE_DSV41","indexer_kv_dtype":"mxfp4","indexer_sparse_logits":true}' --kv-cache-dtype fp8 --max-model-len 393216 --max-num-seqs 32 --gpu-memory-utilization 0.92 --trust-remote-code --served-model-name deepseek-v4-pro deepseek-v4-flash deepseek-flash gpt-4o gpt-4o-mini default --engram-config '{"cpu_offload":true}' --speculative-config '{"method":"dspark","num_speculative_tokens":5,"draft_sample_method":"probabilistic","rejection_sample_method":"block","enable_adaptive_verification":true}' --reasoning-parser deepseek_v41 --reasoning-config '{"reasoning_start_str":" thinking","reasoning_end_str":" response"}' --default-chat-template-kwargs '{"reasoning_effort":"xhigh"}' --enable-auto-tool-choice --tool-call-parser deepseek_v41 --enable-log-requests --uvicorn-log-level info
+Container disk: 200GB
+Volume disk: 1000GB
+Environment Variables:
+HF_HOME=/workspace/hf
+HUGGINGFACE_HUB_CACHE=/workspace/hf/hub
+TRANSFORMERS_CACHE=/workspace/hf/transformers
+TORCH_HOME=/workspace/hf/torch
+BRAVE_API_KEY=
+API_KEY=
+API_KEY2=
+API_KEY3=
+API_KEY4=
+API_KEY5=
+API_KEY6=
+API_KEY7=
+API_KEY8=
+API_KEY9=
+API_KEY10=
+API_KEY11=
+API_KEY12=
+API_KEY13=
+API_KEY14=
+API_KEY15=
+API_KEY16=
