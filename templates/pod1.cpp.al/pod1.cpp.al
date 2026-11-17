@@ -68,6 +68,7 @@ server {
 
     location / {
         # >>> CHANGE THIS ONE LINE when the pod URL changes <<<
+	# Omit https:// . Just the pod name.
         set $pod_upstream <pod-id>-8000.proxy.runpod.net;
 
         # No URI after the host, so the original request URI (path + query)
