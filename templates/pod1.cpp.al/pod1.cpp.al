@@ -6,9 +6,10 @@
 #
 # which changes every time RunPod relaunches the pod. This host absorbs that
 # churn: clients point at https://pod1.cpp.al, and this nginx forwards every
-# request, unchanged, to whatever pod URL is configured below.
+# request, unchanged, to whatever pod URL is configured.
 #
-# When the pod is relaunched, edit the ONE "set $pod_upstream" line below and reload:
+# When the pod is relaunched, edit the ONE "set $pod_upstream" line below and
+# reload:
 #
 #     sudo systemctl reload nginx
 #
@@ -25,10 +26,10 @@ server {
     listen [::]:80;
     server_name pod1.cpp.al;
 
-    error_log /var/log/nginx/pod1.log;
-    access_log /var/log/nginx/pod1.log;
+    error_log  /var/log/nginx/pod1.cpp.al.log;
+    access_log /var/log/nginx/pod1.cpp.al.log;
 
-    location '/.well-known/acme-challenge' {
+    location /.well-known/acme-challenge/ {
         default_type "text/plain";
         root /var/www/letsencrypt;
     }
@@ -44,8 +45,8 @@ server {
     listen [::]:443 ssl;
     server_name pod1.cpp.al;
 
-    error_log /var/log/nginx/pod1.log;
-    access_log /var/log/nginx/pod1.log;
+    error_log  /var/log/nginx/pod1.cpp.al.log;
+    access_log /var/log/nginx/pod1.cpp.al.log;
 
     ssl_certificate     /etc/letsencrypt/live/pod1.cpp.al/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/pod1.cpp.al/privkey.pem;
@@ -68,7 +69,7 @@ server {
 
     location / {
         # >>> CHANGE THIS ONE LINE when the pod URL changes <<<
-	# Omit https:// . Just the pod name.
+        # Just the pod's hostname: no https://, no path.
         set $pod_upstream <pod-id>-8000.proxy.runpod.net;
 
         # No URI after the host, so the original request URI (path + query)
@@ -77,23 +78,23 @@ server {
 
         # Host and SNI must name the upstream, not us. With a variable in
         # proxy_pass, set both explicitly from the same variable.
-        proxy_set_header    Host                $pod_upstream;
+        proxy_set_header      Host $pod_upstream;
         proxy_ssl_server_name on;
-        proxy_ssl_name      $pod_upstream;
+        proxy_ssl_name        $pod_upstream;
 
         # Credentials and forwarding metadata. Authorization must NOT be
         # stripped here — the pod's nginx checks it.
-        proxy_set_header    X-Real-IP           $remote_addr;
-        proxy_set_header    X-Forwarded-For     $proxy_add_x_forwarded_for;
-        proxy_set_header    X-Forwarded-Proto   $scheme;
-        proxy_set_header    X-Forwarded-Host    $host;   # keep pod1.cpp.al here only
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;   # keep pod1.cpp.al here only
 
         # The pod serves streamable-HTTP (MCP over SSE) and vLLM streaming
         # (chunked transfer-encoding). Both require HTTP/1.1 and no response
         # buffering at EVERY hop, or long/interleaved streams stall.
         proxy_http_version 1.1;
-        proxy_set_header    Connection "";
-        proxy_buffering     off;
+        proxy_set_header   Connection "";
+        proxy_buffering    off;
 
         # The pod allows up to 1h for MCP and 10m for vLLM dialogs. The pod
         # enforces its own finer-grained per-path limits; this proxy only has
