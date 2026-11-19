@@ -79,3 +79,35 @@ curl -s https://pod1.cpp.al/v1/models \
 ```
 
 Both should behave exactly as they did against the pod URL directly.
+
+## Monitoring
+
+The pod image (`docker/vllm-openai-v0-32-0/`) serves an **unauthenticated**
+`/healthz` (v0.32.0v2 and later). It passes through this proxy unchanged, so a
+monitor needs no API key:
+
+```bash
+curl -s https://pod1.cpp.al/healthz        # 200 "ok"
+```
+
+The body is fixed text — match it if you like — but the status code already
+means something specific:
+
+| Response | Meaning |
+|---|---|
+| `200 ok` | front nginx, pod nginx, and vLLM's own engine health check all answered |
+| `5xx` | pod nginx is up but vLLM's `/health` failed or timed out |
+| `502` / `504` from this host | pod nginx unreachable (pod down / relaunched; `$pod_upstream` stale) |
+
+Nagios:
+
+```
+check_http -H pod1.cpp.al -S --sni -u /healthz -s ok -t 10
+```
+
+Note that vLLM only starts listening after the model loads, so `/healthz` is
+`5xx` for the whole model-loading window after a relaunch. Use `max_check_attempts`
+generously, or temporarily put the check in a downtime when relaunching.
+
+`/health` (no `z`) is still vLLM's own endpoint behind auth — `/healthz` is the
+one meant for monitors, and it is the only unauthenticated path.

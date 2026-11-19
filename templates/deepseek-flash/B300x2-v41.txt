@@ -1,6 +1,6 @@
 Name: B300-x2-deepseek-v4.1-flash
 GPU: NVIDIA B300
-Container Image: cppalliance/vllm-openai:v0.32.0v1
+Container Image: cppalliance/vllm-openai:v0.32.0v2
 
 # =============================================================================
 # DEEPSEEK V4.1 FLASH ON 2x B300 — HARDWARE NOTES (PLEASE READ)

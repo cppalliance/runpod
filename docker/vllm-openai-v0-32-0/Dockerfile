@@ -24,7 +24,7 @@
 #                 https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4.1-Flash
 #
 # Build:
-#   docker buildx build -t cppalliance/vllm-openai:v0.32.0v1 .
+#   docker buildx build -t cppalliance/vllm-openai:v0.32.0v2 .
 #
 # Required vLLM 0.31.0+ for DeepSeek V4.1 Flash:
 #   --tokenizer-mode deepseek_v41
@@ -76,6 +76,11 @@ RUN chmod +x /usr/local/bin/dcgm-exporter
 
 # Drop the nginx template in place
 COPY nginx.conf.template /etc/nginx/nginx.conf.template
+
+# Body for the unauthenticated /healthz endpoint. It must be a file rather
+# than `return 200 "ok"` because return runs before auth_request, which would
+# skip the vLLM health subrequest (see nginx.conf.template).
+RUN printf 'ok\n' > /usr/share/nginx/healthz.txt
 
 # Copy and wire up the entrypoint
 COPY entrypoint.sh /entrypoint.sh
